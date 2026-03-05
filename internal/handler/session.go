@@ -22,13 +22,14 @@ import (
 
 // SessionHandler manages session CRUD operations.
 type SessionHandler struct {
-	sessions *session.Manager
-	notifier *session.StatusNotifier
+	sessions             *session.Manager
+	notifier             *session.StatusNotifier
+	allowPrivateNetworks bool
 }
 
 // NewSessionHandler creates a new session handler.
-func NewSessionHandler(sessions *session.Manager, notifier *session.StatusNotifier) *SessionHandler {
-	return &SessionHandler{sessions: sessions, notifier: notifier}
+func NewSessionHandler(sessions *session.Manager, notifier *session.StatusNotifier, allowPrivateNetworks bool) *SessionHandler {
+	return &SessionHandler{sessions: sessions, notifier: notifier, allowPrivateNetworks: allowPrivateNetworks}
 }
 
 // callbackOverride allows per-session callback configuration.
@@ -80,7 +81,7 @@ func (h *SessionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.Callback != nil && req.Callback.BaseURL != "" {
-		if err := validateCallbackURL(req.Callback.BaseURL); err != nil {
+		if err := validateCallbackURL(req.Callback.BaseURL, h.allowPrivateNetworks); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{
 				"error": "invalid callback.base_url: " + err.Error(),
 			})
@@ -190,7 +191,7 @@ func validateWorkDir(dir string) error {
 	return nil
 }
 
-func validateCallbackURL(rawURL string) error {
+func validateCallbackURL(rawURL string, allowPrivate bool) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
@@ -202,11 +203,13 @@ func validateCallbackURL(rawURL string) error {
 	if hostname == "" {
 		return fmt.Errorf("host is required")
 	}
-	if strings.EqualFold(hostname, "localhost") {
-		return fmt.Errorf("localhost callbacks are not allowed")
-	}
-	if ip := net.ParseIP(hostname); ip != nil && netutil.IsPrivateIP(ip) {
-		return fmt.Errorf("private IP callbacks are not allowed")
+	if !allowPrivate {
+		if strings.EqualFold(hostname, "localhost") {
+			return fmt.Errorf("localhost callbacks are not allowed")
+		}
+		if ip := net.ParseIP(hostname); ip != nil && netutil.IsPrivateIP(ip) {
+			return fmt.Errorf("private IP callbacks are not allowed")
+		}
 	}
 	if len(rawURL) > 2000 {
 		return fmt.Errorf("callback URL too long")

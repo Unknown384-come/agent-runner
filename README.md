@@ -1,10 +1,13 @@
 # Agent Runner
 
-LLM agent microservice for Laravel applications. Runs autonomous AI agents with tool-calling capabilities, streaming results via SSE in real-time.
+Go microservice that runs autonomous AI agents with tool-calling capabilities. Bridges Laravel (or any HTTP client) with LLM providers (OpenAI, Gemini, Anthropic) via a turn-based agent loop, streaming results in real-time over SSE.
+
+**Laravel SDK:** [`ginkida/laravel-agent-runner`](https://github.com/ginkida/laravel-agent-runner) — first-class PHP integration with fluent builder API, auto-discovery of remote tools, SSE stream consumption, and HMAC signing handled for you.
 
 ## Table of Contents
 
 - [Features](#features)
+- [Laravel SDK](#laravel-sdk)
 - [Quick Start](#quick-start)
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
@@ -23,12 +26,143 @@ LLM agent microservice for Laravel applications. Runs autonomous AI agents with 
 
 - **Multi-provider** — OpenAI, Google Gemini, Anthropic Claude. Switch models by changing one string.
 - **Built-in tools** — `bash`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`, `list_dir` — sandboxed to a working directory.
-- **Remote tools** — Define custom tools in Laravel; Agent Runner calls back via HMAC-signed HTTP.
+- **Remote tools** — Define custom tools in your app; Agent Runner calls back via HMAC-signed HTTP.
 - **Real-time SSE streaming** — Text, tool calls, and results streamed as they happen.
 - **Autonomous agent loop** — The agent decides which tools to call, processes results, and continues until the task is complete.
 - **Loop detection** — Automatically detects when an agent is stuck repeating the same action and intervenes.
 - **Production-ready** — Circuit breakers, rate limiting, HMAC auth, SSRF protection, graceful shutdown.
 - **Minimal dependencies** — Go stdlib + [chi](https://github.com/go-chi/chi) router + YAML parser. No SDKs, no ORMs, no frameworks.
+- **Official Laravel SDK** — [`ginkida/laravel-agent-runner`](https://github.com/ginkida/laravel-agent-runner) handles all the HTTP/HMAC/SSE complexity so you can focus on your agent logic.
+
+## Laravel SDK
+
+The recommended way to integrate with Agent Runner from Laravel is the official SDK: [`ginkida/laravel-agent-runner`](https://github.com/ginkida/laravel-agent-runner).
+
+### Install
+
+```bash
+composer require ginkida/laravel-agent-runner
+php artisan vendor:publish --tag=agent-runner-config
+```
+
+### Configure
+
+Add to your `.env`:
+
+```env
+AGENT_RUNNER_URL=http://localhost:8090
+AGENT_RUNNER_HMAC_SECRET=your-shared-secret   # must match Agent Runner's auth.hmac_secret
+AGENT_RUNNER_CLIENT_ID=laravel
+AGENT_RUNNER_CALLBACK_URL=https://your-app.com/api/agent-runner
+AGENT_RUNNER_DEFAULT_MODEL=gpt-4o-mini
+```
+
+### Usage
+
+Three execution modes — pick what fits your use case:
+
+**`run()` — synchronous, blocking.** Creates a session, sends a message, consumes the entire SSE stream, and returns the final result. Best for simple request-response flows.
+
+```php
+$result = AgentRunner::agent('assistant')
+    ->model('gpt-4o')
+    ->systemPrompt('You are a helpful assistant.')
+    ->tools(['read_file', 'write_file', 'bash'])
+    ->remoteTools(['search_database'])
+    ->onText(fn(string $text) => echo $text)
+    ->run('Summarize the README.md file');
+
+$result->doneOutput();      // "The README describes..."
+$result->doneTurns();       // 3
+$result->doneDurationMs();  // 8420
+```
+
+**`start()` — manual stream control.** Returns a session ID and an `SseStream` for fine-grained event consumption. Best when you need to process events individually.
+
+```php
+$session = AgentRunner::agent('coder')
+    ->systemPrompt('You are a senior developer.')
+    ->withAllRemoteTools()
+    ->start('Refactor the User model');
+
+foreach ($session['stream']->events() as $event) {
+    match($event->type) {
+        'text'        => $this->handleText($event->textContent()),
+        'tool_call'   => $this->handleToolCall($event->toolName(), $event->toolArgs()),
+        'tool_result' => $this->handleToolResult($event->toolName(), $event->data['success']),
+        'error'       => $this->handleError($event->errorMessage()),
+        'done'        => break,
+    };
+}
+```
+
+**`dispatch()` — fire-and-forget.** Creates the session and sends a message, returns immediately with the session ID. Results arrive asynchronously via status callback events.
+
+```php
+$sessionId = AgentRunner::agent('worker')
+    ->dispatch('Process the uploaded CSV file');
+```
+
+### Remote Tools
+
+Implement `RemoteToolContract` and place in `app/AgentTools/` — the SDK auto-discovers them:
+
+```php
+namespace App\AgentTools;
+
+use Ginkida\AgentRunner\Contracts\RemoteToolContract;
+use Ginkida\AgentRunner\DTOs\ToolCallbackRequest;
+
+class SearchDatabase implements RemoteToolContract
+{
+    public function name(): string { return 'search_database'; }
+
+    public function description(): string { return 'Search the application database.'; }
+
+    public function parameters(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'query' => ['type' => 'string', 'description' => 'Search query'],
+            ],
+            'required' => ['query'],
+        ];
+    }
+
+    public function handle(ToolCallbackRequest $request): array
+    {
+        $results = DB::table('records')
+            ->where('content', 'like', "%{$request->argument('query')}%")
+            ->limit($request->argument('limit', 10))
+            ->get();
+
+        return ['success' => true, 'content' => $results->toJson()];
+    }
+}
+```
+
+### Status Events
+
+The SDK dispatches Laravel events on status callbacks — listen for `AgentSessionCompleted`, `AgentSessionFailed`, etc:
+
+```php
+// EventServiceProvider or listener
+use Ginkida\AgentRunner\Events\AgentSessionCompleted;
+
+class HandleAgentCompletion
+{
+    public function handle(AgentSessionCompleted $event): void
+    {
+        $output = $event->payload->output;
+        // process the agent's result
+    }
+}
+```
+
+For full SDK documentation, see the [Laravel Agent Runner SDK repo](https://github.com/ginkida/laravel-agent-runner).
+
+---
 
 ## Quick Start
 
@@ -532,7 +666,11 @@ X-Nonce: 4f9a4f1f6d4d7a8f87b5a5c8c2f12a10
 - **4xx responses** — not retried, returned as tool error immediately
 - **Network errors** (timeout, connection refused, connection reset, EOF) — retried
 
-### Laravel Example
+### Laravel Integration
+
+If you're using Laravel, the [Laravel Agent Runner SDK](https://github.com/ginkida/laravel-agent-runner) handles routing, HMAC verification, and tool dispatch automatically. Just implement `RemoteToolContract` and place it in `app/AgentTools/` — see the [Laravel SDK](#laravel-sdk) section above.
+
+For other frameworks, implement the callback endpoint manually:
 
 ```php
 // routes/api.php
@@ -547,7 +685,6 @@ class AgentToolController extends Controller
         return match ($tool) {
             'search_docs' => $this->searchDocs($request->input('arguments')),
             'create_ticket' => $this->createTicket($request->input('arguments')),
-            'send_notification' => $this->sendNotification($request->input('arguments')),
             default => response()->json(['success' => false, 'error' => 'Unknown tool'], 404),
         };
     }
@@ -803,6 +940,9 @@ rate_limit:
 circuit_breaker:
   max_failures: 5               # Failures before circuit opens
   reset_timeout_sec: 30         # Seconds before half-open probe
+
+security:
+  allow_private_networks: false  # Allow callbacks to private/internal IPs (Docker, Swarm, K8s)
 ```
 
 ### Environment Variables
@@ -836,6 +976,7 @@ Every config value can be overridden via environment variables with the `AGENT_R
 | `AGENT_RUNNER_RATELIMIT_BURST` | `rate_limit.burst` | `40` |
 | `AGENT_RUNNER_CB_MAX_FAILURES` | `circuit_breaker.max_failures` | `5` |
 | `AGENT_RUNNER_CB_RESET_TIMEOUT_SEC` | `circuit_breaker.reset_timeout_sec` | `30` |
+| `AGENT_RUNNER_SECURITY_ALLOW_PRIVATE_NETWORKS` | `security.allow_private_networks` | `false` |
 
 ### Docker Secrets
 
@@ -891,6 +1032,12 @@ echo "" | docker secret create anthropic_key -
 
 # Deploy
 docker stack deploy -c docker-stack.yml agent-runner
+```
+
+If your Laravel app runs in the same Swarm and the callback URL uses the overlay network (e.g., `http://laravel-app:8000/api/agent-runner`), enable private network access so SSRF protection doesn't block internal traffic:
+
+```bash
+AGENT_RUNNER_SECURITY_ALLOW_PRIVATE_NETWORKS=true
 ```
 
 The `docker-stack.yml` includes:
@@ -1032,8 +1179,8 @@ The shutdown timeout is `defaults.timeout_secs + 10 seconds` (minimum 10 seconds
 
 ### Network
 
-- **SSRF protection** — `SafeTransport` resolves DNS at dial time and blocks connections to private IP ranges (10.x, 172.16.x, 192.168.x, 127.x, link-local, loopback)
-- **Callback URL validation** — blocks `localhost`, private IPs, and URLs longer than 2000 chars
+- **SSRF protection** — `SafeTransport` resolves DNS at dial time and blocks connections to private IP ranges (10.x, 172.16.x, 192.168.x, 127.x, link-local, loopback). Can be disabled with `security.allow_private_networks: true` for Docker/Swarm/Kubernetes internal network deployments.
+- **Callback URL validation** — blocks `localhost`, private IPs, and URLs longer than 2000 chars (private IP checks are skipped when `allow_private_networks` is enabled)
 - **Rate limiting** — per-client token bucket with configurable RPS and burst
 
 ### Execution Sandbox
@@ -1093,7 +1240,20 @@ eventSource.addEventListener('done', () => eventSource.close());
 
 ### "connection to private IP X is blocked"
 
-Agent Runner blocks SSRF attempts. If your callback URL legitimately resolves to a private IP (e.g., internal service), you need to configure networking so the callback uses a public or routable address. In Docker, use `host.docker.internal` to reach the host machine.
+Agent Runner blocks SSRF attempts by default. If your callback URL legitimately resolves to a private IP (e.g., Docker Swarm overlay network, Kubernetes cluster DNS), enable private network access:
+
+```yaml
+security:
+  allow_private_networks: true
+```
+
+Or via environment variable:
+
+```bash
+AGENT_RUNNER_SECURITY_ALLOW_PRIVATE_NETWORKS=true
+```
+
+Alternatively, in Docker Compose on a single host, use `host.docker.internal` to reach the host machine without disabling SSRF protection.
 
 ### Tool result truncated
 

@@ -35,13 +35,14 @@ type RemoteTool struct {
 
 // RemoteToolConfig holds configuration for creating a RemoteTool.
 type RemoteToolConfig struct {
-	Name            string
-	Description     string
-	Schema          *agent.Schema
-	CallbackBaseURL string
-	HMACSecret      string
-	SessionID       string
-	TimeoutSec      int
+	Name                 string
+	Description          string
+	Schema               *agent.Schema
+	CallbackBaseURL      string
+	HMACSecret           string
+	SessionID            string
+	TimeoutSec           int
+	AllowPrivateNetworks bool
 }
 
 // NewRemoteTool creates a remote tool that calls back to Laravel.
@@ -78,7 +79,7 @@ func NewRemoteTool(cfg RemoteToolConfig) (*RemoteTool, error) {
 		callbackURL: callbackURL,
 		hmacSecret:  cfg.HMACSecret,
 		sessionID:   cfg.SessionID,
-		httpClient:  &http.Client{Timeout: timeout, Transport: netutil.SafeTransport()},
+		httpClient:  &http.Client{Timeout: timeout, Transport: netutil.SafeTransport(cfg.AllowPrivateNetworks)},
 	}, nil
 }
 

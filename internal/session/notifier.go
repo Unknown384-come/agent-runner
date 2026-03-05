@@ -41,7 +41,9 @@ type StatusPayload struct {
 }
 
 // NewStatusNotifier creates a notifier that calls back to Laravel.
-func NewStatusNotifier(baseURL, hmacSecret string, timeoutSec int) *StatusNotifier {
+// When allowPrivateNetworks is true, SSRF protection for private IPs is disabled
+// (for Docker/internal network deployments).
+func NewStatusNotifier(baseURL, hmacSecret string, timeoutSec int, allowPrivateNetworks bool) *StatusNotifier {
 	timeout := 10 * time.Second
 	if timeoutSec > 0 {
 		timeout = time.Duration(timeoutSec) * time.Second
@@ -49,7 +51,7 @@ func NewStatusNotifier(baseURL, hmacSecret string, timeoutSec int) *StatusNotifi
 	return &StatusNotifier{
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
 		hmacSecret: hmacSecret,
-		httpClient: &http.Client{Timeout: timeout, Transport: netutil.SafeTransport()},
+		httpClient: &http.Client{Timeout: timeout, Transport: netutil.SafeTransport(allowPrivateNetworks)},
 		sem:        make(chan struct{}, 32), // max 32 concurrent notifications
 		dropped:    &atomic.Uint64{},
 	}

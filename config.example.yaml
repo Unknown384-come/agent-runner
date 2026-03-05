@@ -35,3 +35,8 @@ callback:
   # Base URL for remote tool callbacks to your Laravel app
   base_url: "http://localhost:8000/api/agent-runner"
   timeout_sec: 30
+
+security:
+  # Allow connections to private/internal IPs (Docker, Swarm, Kubernetes).
+  # When false (default), SSRF protection blocks callbacks to RFC1918 and loopback addresses.
+  allow_private_networks: false

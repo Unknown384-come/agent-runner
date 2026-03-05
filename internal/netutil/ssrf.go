@@ -36,7 +36,8 @@ func IsPrivateIP(ip net.IP) bool {
 
 // SafeTransport returns an *http.Transport that blocks connections to private IPs.
 // DNS resolution happens at dial time to prevent DNS rebinding.
-func SafeTransport() *http.Transport {
+// When allowPrivate is true, private IP blocking is skipped (for Docker/internal networks).
+func SafeTransport(allowPrivate bool) *http.Transport {
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	return &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -51,9 +52,11 @@ func SafeTransport() *http.Transport {
 			if len(ips) == 0 {
 				return nil, fmt.Errorf("no IP addresses resolved for host %q", host)
 			}
-			for _, ip := range ips {
-				if IsPrivateIP(ip.IP) {
-					return nil, fmt.Errorf("connection to private IP %s is blocked", ip.IP)
+			if !allowPrivate {
+				for _, ip := range ips {
+					if IsPrivateIP(ip.IP) {
+						return nil, fmt.Errorf("connection to private IP %s is blocked", ip.IP)
+					}
 				}
 			}
 			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))

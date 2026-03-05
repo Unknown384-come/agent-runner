@@ -9,7 +9,7 @@ import (
 )
 
 // BuildRegistry creates a combined registry with builtin and remote tools.
-func BuildRegistry(agentDef session.AgentDefinition, callbackBaseURL, hmacSecret, sessionID, workDir string, callbackTimeoutSec int) (*agent.Registry, []string, error) {
+func BuildRegistry(agentDef session.AgentDefinition, callbackBaseURL, hmacSecret, sessionID, workDir string, callbackTimeoutSec int, allowPrivateNetworks bool) (*agent.Registry, []string, error) {
 	registry := agent.NewRegistry()
 	var registered []string
 
@@ -28,13 +28,14 @@ func BuildRegistry(agentDef session.AgentDefinition, callbackBaseURL, hmacSecret
 	for _, def := range agentDef.Tools.Remote {
 		schema := convertJSONSchema(def.Parameters)
 		tool, err := NewRemoteTool(RemoteToolConfig{
-			Name:            def.Name,
-			Description:     def.Description,
-			Schema:          schema,
-			CallbackBaseURL: callbackBaseURL,
-			HMACSecret:      hmacSecret,
-			SessionID:       sessionID,
-			TimeoutSec:      callbackTimeoutSec,
+			Name:                 def.Name,
+			Description:          def.Description,
+			Schema:               schema,
+			CallbackBaseURL:      callbackBaseURL,
+			HMACSecret:           hmacSecret,
+			SessionID:            sessionID,
+			TimeoutSec:           callbackTimeoutSec,
+			AllowPrivateNetworks: allowPrivateNetworks,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("create remote tool %s: %w", def.Name, err)

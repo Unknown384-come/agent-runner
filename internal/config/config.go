@@ -19,6 +19,11 @@ type Config struct {
 	Callback       CallbackConfig       `yaml:"callback"`
 	RateLimit      RateLimitConfig      `yaml:"rate_limit"`
 	CircuitBreaker CircuitBreakerConfig `yaml:"circuit_breaker"`
+	Security       SecurityConfig       `yaml:"security"`
+}
+
+type SecurityConfig struct {
+	AllowPrivateNetworks bool `yaml:"allow_private_networks"`
 }
 
 type CircuitBreakerConfig struct {
@@ -261,6 +266,9 @@ func applyEnvOverrides(cfg *Config) {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.CircuitBreaker.ResetTimeoutSec = n
 		}
+	}
+	if v := os.Getenv("AGENT_RUNNER_SECURITY_ALLOW_PRIVATE_NETWORKS"); v != "" {
+		cfg.Security.AllowPrivateNetworks = v == "true" || v == "1"
 	}
 }
 

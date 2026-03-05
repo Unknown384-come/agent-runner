@@ -26,7 +26,7 @@ func NewRouter(cfg *config.Config, sessions *session.Manager, rateLimiter *mw.Ra
 
 	// Handlers
 	healthH := handler.NewHealthHandler(sessions)
-	sessionH := handler.NewSessionHandler(sessions, notifier)
+	sessionH := handler.NewSessionHandler(sessions, notifier, cfg.Security.AllowPrivateNetworks)
 	messageH := handler.NewMessageHandler(sessions, cfg, notifier)
 	streamH := handler.NewStreamHandler(sessions)
 

@@ -98,6 +98,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		sess.ID,
 		workDir,
 		callbackTimeout,
+		h.cfg.Security.AllowPrivateNetworks,
 	)
 	if err != nil {
 		client.Close()

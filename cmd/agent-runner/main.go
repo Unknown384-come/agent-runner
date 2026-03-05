@@ -42,7 +42,7 @@ func main() {
 	// Create status notifier for Laravel callbacks (nil-safe — handlers check for nil)
 	var notifier *session.StatusNotifier
 	if cfg.Callback.BaseURL != "" {
-		notifier = session.NewStatusNotifier(cfg.Callback.BaseURL, cfg.Auth.HMACSecret, cfg.Callback.TimeoutSec)
+		notifier = session.NewStatusNotifier(cfg.Callback.BaseURL, cfg.Auth.HMACSecret, cfg.Callback.TimeoutSec, cfg.Security.AllowPrivateNetworks)
 	}
 
 	srv := server.New(cfg, sessions, notifier)
