@@ -123,7 +123,7 @@ func DefaultConfig() *Config {
 }
 
 // Load reads config from the given path, falling back to default locations.
-// Environment variables override YAML values.
+// If no config file is found, defaults are used. Environment variables always override.
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 
@@ -135,24 +135,21 @@ func Load(path string) (*Config, error) {
 		}
 	}
 
-	var loaded bool
 	for _, p := range paths {
 		if p == "" {
 			continue
 		}
 		data, err := os.ReadFile(p)
 		if err != nil {
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read config %s: %w", p, err)
 		}
 		if err := yaml.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("parse config %s: %w", p, err)
 		}
-		loaded = true
 		break
-	}
-
-	if !loaded && path != "" {
-		return nil, fmt.Errorf("config file not found: %s", path)
 	}
 
 	applyEnvOverrides(cfg)
