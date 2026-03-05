@@ -1,6 +1,14 @@
-# Agent Runner
+<p align="center">
+  <img src="https://minio.ginkida.dev/minion/github/agent-runner.png" width="400" alt="Agent Runner">
+</p>
 
-Go microservice that runs autonomous AI agents with tool-calling capabilities. Bridges Laravel (or any HTTP client) with LLM providers (OpenAI, Gemini, Anthropic) via a turn-based agent loop, streaming results in real-time over SSE.
+<h1 align="center">Agent Runner</h1>
+
+<p align="center">
+  Go microservice that runs autonomous AI agents with tool-calling capabilities.<br>
+  Bridges Laravel (or any HTTP client) with LLM providers (OpenAI, Gemini, Anthropic)<br>
+  via a turn-based agent loop, streaming results in real-time over SSE.
+</p>
 
 **Laravel SDK:** [`ginkida/laravel-agent-runner`](https://github.com/ginkida/laravel-agent-runner) — first-class PHP integration with fluent builder API, auto-discovery of remote tools, SSE stream consumption, and HMAC signing handled for you.
 
